@@ -41,6 +41,12 @@ ResetCooldownAccountsHours = json.loads(config.get('Account Cooldown','ResetCool
 ResetCooldownAccountsMinutes = json.loads(config.get('Account Cooldown','ResetCooldownAccountsMinutes'))
 ResetCooldownAccountsLevelrange = json.loads(config.get('Account Cooldown','ResetCooldownAccountsLevelrange'))
 
+#Spin Reset Settings
+SpinReset = config.getboolean('Spin Reset','ResetSpins')
+SpinResetHours = json.loads(config.get('Spin Reset','ResetSpinsHours'))
+SpinResetMinutes = json.loads(config.get('Spin Reset','ResetSpinsMinutes'))
+SpinResetLevelrange = json.loads(config.get('Spin Reset','ResetSpinsLevelrange'))
+
 #Logging
 logFile = config.get('Logging','Logfile')
 logActionsOnly = config.getboolean('Logging','LogActionsOnly')
@@ -85,11 +91,21 @@ try:
 		print('[VERBOSE] Reset Cooldown at the following minutes: {}'.format(ResetCooldownAccountsMinutes))
 		print('[VERBOSE] Reset Cooldown for the following levels: {}'.format(ResetCooldownAccountsLevelrange))
 		print('')
+		
+	#Spin Reset
+	if debugLogging:
+		print('[DEBUG] Reset Spins: {}'.format(SpinReset))
+	if verboseLogging:
+		print('[VERBOSE] Reset Spins at the following hours: {}'.format(SpinResetHours))
+		print('[VERBOSE] Reset Spins at the following minutes: {}'.format(SpinResetMinutes))
+		print('[VERBOSE] Reset Spins for the following levels: {}'.format(SpinResetLevelrange))
+		print('')
 	
 	#Declare every script execute set to false
 	executeCleanPokemon = False
 	executeConvert = False
 	executeCooldown = False
+	executeSpinReset = False
 	
 	#Handling Pokemon Cleaning to execute
 	if CleanPokemon:
@@ -112,9 +128,16 @@ try:
 				for j in ConvertStopsMinutes:
 					if j == now.minute:
 						executeConvert = True
+	#Handling Spin Reset to execute
+	if SpinReset:
+		for i in SpinResetHours:
+			if i == now.hour:
+				for j in SpinResetMinutes:
+					if j == now.minute:
+						executeSpinReset = True
 
 	#When Config says to execute something, do that
-	if ConvertPokestops or ResetCooldownAccounts or CleanPokemon:
+	if ConvertPokestops or ResetCooldownAccounts or CleanPokemon or SpinReset:
 		conn = mysql.connector.connect(host=Host,
                              database=Name,
                              user=User,
@@ -201,6 +224,33 @@ try:
 				conn.commit()
 				log("[Cooldown] {updated} stopname(s) converted to gym and {deleted} stop(s) got deleted".format(updated=updated,deleted=cursor.rowcount))
 				print("[Conversion] {updated} stopname(s) converted to gym and {deleted} stop(s) got deleted".format(updated=updated,deleted=cursor.rowcount))
+
+		#Execute Spin Reset Script
+		if executeSpinReset:
+			print('')
+			print('[SpinReset] Executing spin-reset script...')
+			resetMinlevel = str(SpinResetLevelrange[0])
+			resetMaxlevel = str(SpinResetLevelrange[1])
+			if debugLogging:
+				print ('[SpinReset][DEBUG] Executing with levelrange: {min} to {max}'.format(min=resetMinlevel,max=resetMaxlevel))
+			input = (resetMinlevel, resetMaxlevel)
+			cursor = conn.cursor()
+			sql = """SELECT username FROM account WHERE spins > 1 AND level >=%s AND level <= %s"""
+			cursor.execute(sql, input)
+			cooldownedAccounts = cursor.fetchall()
+			if cooldownedAccounts == []:
+				if not logActionsOnly:
+					log("[SpinReset] Script executed - no accounts on cooldown({})".format(len(cooldownedAccounts)))
+				print("[SpinReset] SpinReset script was executed, but no account with spins was found for levelrange: {min}-{max}".format(min=resetMinlevel,max=resetMaxlevel))
+				cursor.close
+			else:
+				sql_update = """UPDATE account set spins=0 WHERE level >=%s AND level <= %s"""
+				cursor = conn.cursor()
+				cursor.execute(sql_update, input)
+				conn.commit()
+				log("[SpinReset] {} Account(s) were changed to 0 spins".format(cursor.rowcount))
+				print(" ")
+				print("[SpinReset] {} Account(s) were changed to 0 spins".format(cursor.rowcount))
 	else:
 		if not logActionsOnly:
 			log("[Script] Multiscript was started, but no configs were enabled".format(len(convertedGyms)))
