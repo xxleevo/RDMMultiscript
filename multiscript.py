@@ -106,7 +106,7 @@ try:
 	executeConvert = False
 	executeCooldown = False
 	executeSpinReset = False
-	
+
 	#Handling Pokemon Cleaning to execute
 	if CleanPokemon:
 		for i in CleanPokemonHours:
@@ -151,18 +151,24 @@ try:
 			print('')
 			print('[PokemonClean] Executing pokemon cleanup script...')
 			cursor = conn.cursor()
-			sql = """DELETE from pokemon WHERE expire_timestamp < UNIX_TIMESTAMP(NOW()) LIMIT 10000"""
-			cursor.execute(sql)
+			tstamp = time.time()
+			if debugLogging:
+				print('[Pokemon][DEBUG] timestamp used to delete Pokemon in chunks: {}'.format(tstamp))
+			sql = """DELETE from pokemon WHERE expire_timestamp <=%s LIMIT 1000"""
+			cursor.execute(sql, (time.time(),) )
 			cleanedCount = cleanedCount + cursor.rowcount
 			conn.commit()
-			#Clean chunks in size of 10k Pokemon
-			while cursor.rowcount > 9999:
-				cursor.execute(sql)
+			#Clean chunks in size of 1k Pokemon
+			while cursor.rowcount > 999:
+				cursor.execute(sql, (time.time(),) )
 				cleanedCount = cleanedCount + cursor.rowcount
 				chunks = chunks + 1
+				if chunks % 5 == 0:
+					if debugLogging:
+						print('[Pokemon][DEBUG] 5 Chunks(1000) cleared. Total cleared now: {}'.format(chunks))
 				conn.commit()
 			if debugLogging:
-				print('[Pokemon][DEBUG] Chunks(10000) cleared: {}'.format(chunks))
+				print('[Pokemon][DEBUG] Done. Chunks(1000) cleared: {}'.format(chunks))
 			if cleanedCount <= 0:
 				if not logActionsOnly:
 					log("[PokemonClean] Script executed - Pokemon table already clean({})".format(cleanedCount))
