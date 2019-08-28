@@ -163,7 +163,7 @@ try:
 				print("[Cooldown] Cooldown script was executed, but no account in cooldown was found for levelrange: {min}-{max}".format(min=resetMinlevel,max=resetMaxlevel))
 				cursor.close
 			else:
-				sql_update = """UPDATE account set last_encounter_time=NULL WHERE level >=%s AND level <= %s"""
+				sql_update = """UPDATE account set last_encounter_time=NULL, last_encounter_lat=NULL, last_encounter_lon=NULL WHERE level >=%s AND level <= %s"""
 				cursor = conn.cursor()
 				cursor.execute(sql_update, input)
 				conn.commit()
