@@ -187,7 +187,7 @@ try:
 				print("[Conversion] Convertion script was executed, but no stop was changed to a gym")
 				cursor.close
 			else:
-				sql_update = """UPDATE gym INNER JOIN pokestop ON pokestop.id = gym.id SET gym.name = pokestop.name, gym.url = pokestop.url"""
+				sql_update = """UPDATE gym INNER JOIN pokestop ON pokestop.id = gym.id SET gym.name = pokestop.name, gym.url = pokestop.url WHERE pokestop.name IS NOT NULL"""
 				sql_delete = """DELETE FROM pokestop USING pokestop INNER JOIN gym WHERE pokestop.id = gym.id"""
 				cursor = conn.cursor()
 				cursor.execute(sql_update)
