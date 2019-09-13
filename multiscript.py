@@ -47,6 +47,12 @@ SpinResetHours = json.loads(config.get('Spin Reset','ResetSpinsHours'))
 SpinResetMinutes = json.loads(config.get('Spin Reset','ResetSpinsMinutes'))
 SpinResetLevelrange = json.loads(config.get('Spin Reset','ResetSpinsLevelrange'))
 
+#Spin Reset Settings
+WarningReset = config.getboolean('Warning Reset','ResetWarnings')
+WarningsResetHours = json.loads(config.get('Warning Reset','ResetWarningsHours'))
+WarningsResetMinutes = json.loads(config.get('Warning Reset','ResetWarningsMinutes'))
+WarningsResetLevelrange = json.loads(config.get('Warning Reset','ResetWarningsLevelrange'))
+
 #Logging
 logFile = config.get('Logging','Logfile')
 logActionsOnly = config.getboolean('Logging','LogActionsOnly')
@@ -100,12 +106,22 @@ try:
 		print('[VERBOSE] Reset Spins at the following minutes: {}'.format(SpinResetMinutes))
 		print('[VERBOSE] Reset Spins for the following levels: {}'.format(SpinResetLevelrange))
 		print('')
+		
+	#Spin Reset
+	if debugLogging:
+		print('[DEBUG] Reset Spins: {}'.format(WarningReset))
+	if verboseLogging:
+		print('[VERBOSE] Reset Spins at the following hours: {}'.format(WarningResetHours))
+		print('[VERBOSE] Reset Spins at the following minutes: {}'.format(WarningResetMinutes))
+		print('[VERBOSE] Reset Spins for the following levels: {}'.format(WarningResetLevelrange))
+		print('')
 	
 	#Declare every script execute set to false
 	executeCleanPokemon = False
 	executeConvert = False
 	executeCooldown = False
 	executeSpinReset = False
+	executeWarningReset = False
 
 	#Handling Pokemon Cleaning to execute
 	if CleanPokemon:
@@ -135,9 +151,17 @@ try:
 				for j in SpinResetMinutes:
 					if j == now.minute:
 						executeSpinReset = True
+						
+	#Handling Spin Reset to execute
+	if WarningReset:
+		for i in WarningsResetHours:
+			if i == now.hour:
+				for j in WarningsResetMinutes:
+					if j == now.minute:
+						executeWarningReset = True
 
 	#When Config says to execute something, do that
-	if ConvertPokestops or ResetCooldownAccounts or CleanPokemon or SpinReset:
+	if ConvertPokestops or ResetCooldownAccounts or CleanPokemon or SpinReset or WarningReset:
 		conn = mysql.connector.connect(host=Host,
                              database=Name,
                              user=User,
@@ -224,6 +248,32 @@ try:
 				log("[SpinReset] {} Account(s) were changed to 0 spins".format(cursor.rowcount))
 				print(" ")
 				print("[SpinReset] {} Account(s) were changed to 0 spins".format(cursor.rowcount))
+				
+		if executeWarningReset:
+			print('')
+			print('[WarningReset] Executing spin-reset script...')
+			resetMinlevel = str(WarningsResetLevelrange[0])
+			resetMaxlevel = str(WarningsResetLevelrange[1])
+			if debugLogging:
+				print ('[WarningReset][DEBUG] Executing with levelrange: {min} to {max}'.format(min=resetMinlevel,max=resetMaxlevel))
+			input = (resetMinlevel, resetMaxlevel)
+			cursor = conn.cursor()
+			sql = """SELECT username FROM account WHERE first_warning_timestamp IS NOT NULL AND level >=%s AND level <= %s"""
+			cursor.execute(sql, input)
+			cooldownedAccounts = cursor.fetchall()
+			if cooldownedAccounts == []:
+				if not logActionsOnly:
+					log("[WarningReset] Script executed - no accounts with warnings({})".format(len(cooldownedAccounts)))
+				print("[WarningReset] WarningReset script was executed, but no account with warnings was found for levelrange: {min}-{max}".format(min=resetMinlevel,max=resetMaxlevel))
+				cursor.close
+			else:
+				sql_update = """UPDATE account set first_warning_timestamp=null WHERE level >=%s AND level <= %s"""
+				cursor = conn.cursor()
+				cursor.execute(sql_update, input)
+				conn.commit()
+				log("[WarningReset] {} Account(s) cleared warnings".format(cursor.rowcount))
+				print(" ")
+				print("[WarningReset] {} Account(s) cleared warnings".format(cursor.rowcount))
 
 		#Execute CleanPokemon Script
 		if executeCleanPokemon:
