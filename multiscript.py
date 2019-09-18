@@ -29,29 +29,34 @@ Port = config.get('DB','Port')
 CleanPokemon = config.getboolean('Pokemon','CleanPokemon')
 CleanPokemonHours = json.loads(config.get('Pokemon','CleanPokemonHours'))
 CleanPokemonMinutes = json.loads(config.get('Pokemon','CleanPokemonMinutes'))
+CleanPokemonLogging = config.getboolean('Pokemon','CleanPokemonLogging')
 
 #Pokestop Config Settings
 ConvertPokestops = config.getboolean('Pokestop','ConvertStops')
 ConvertStopsHours = json.loads(config.get('Pokestop','ConvertStopsHours'))
 ConvertStopsMinutes = json.loads(config.get('Pokestop','ConvertStopsMinutes'))
+ConvertPokestopsLogging = config.getboolean('Pokestop','ConvertStopsLogging')
 
 #Account Cooldown-Reset Settings
 ResetCooldownAccounts = config.getboolean('Account Cooldown','ResetCooldownAccounts')
 ResetCooldownAccountsHours = json.loads(config.get('Account Cooldown','ResetCooldownAccountsHours'))
 ResetCooldownAccountsMinutes = json.loads(config.get('Account Cooldown','ResetCooldownAccountsMinutes'))
 ResetCooldownAccountsLevelrange = json.loads(config.get('Account Cooldown','ResetCooldownAccountsLevelrange'))
+ResetCooldownAccountsLogging = config.getboolean('Account Cooldown','ResetCooldownAccountsLogging')
 
 #Spin Reset Settings
 SpinReset = config.getboolean('Spin Reset','ResetSpins')
 SpinResetHours = json.loads(config.get('Spin Reset','ResetSpinsHours'))
 SpinResetMinutes = json.loads(config.get('Spin Reset','ResetSpinsMinutes'))
 SpinResetLevelrange = json.loads(config.get('Spin Reset','ResetSpinsLevelrange'))
+SpinResetLogging = config.getboolean('Spin Reset','ResetSpinsLogging')
 
-#Spin Reset Settings
+#Warning Settings
 WarningReset = config.getboolean('Warning Reset','ResetWarnings')
 WarningsResetHours = json.loads(config.get('Warning Reset','ResetWarningsHours'))
 WarningsResetMinutes = json.loads(config.get('Warning Reset','ResetWarningsMinutes'))
 WarningsResetLevelrange = json.loads(config.get('Warning Reset','ResetWarningsLevelrange'))
+WarningsResetLogging = config.getboolean('Warning Reset','ResetWarningsLogging')
 
 #Logging
 logFile = config.get('Logging','Logfile')
@@ -182,8 +187,9 @@ try:
 			cursor.execute(sql, input)
 			cooldownedAccounts = cursor.fetchall()
 			if cooldownedAccounts == []:
-				if not logActionsOnly:
-					log("[Cooldown] Script executed - no accounts on cooldown({})".format(len(cooldownedAccounts)))
+				if ResetCooldownAccountsLogging:
+					if not logActionsOnly:
+						log("[Cooldown] Script executed - no accounts on cooldown({})".format(len(cooldownedAccounts)))
 				print("[Cooldown] Cooldown script was executed, but no account in cooldown was found for levelrange: {min}-{max}".format(min=resetMinlevel,max=resetMaxlevel))
 				cursor.close
 			else:
@@ -191,7 +197,8 @@ try:
 				cursor = conn.cursor()
 				cursor.execute(sql_update, input)
 				conn.commit()
-				log("[Cooldown] {} Account(s) have been taken out of cooldown".format(cursor.rowcount))
+				if ResetCooldownAccountsLogging:
+					log("[Cooldown] {} Account(s) have been taken out of cooldown".format(cursor.rowcount))
 				print(" ")
 				print("[Cooldown] {} Account(s) have been taken out of cooldown".format(cursor.rowcount))
 			
@@ -206,8 +213,9 @@ try:
 			if debugLogging:
 				print('[Conversion][DEBUG] Convertable Gyms: {}'.format(cursor.rowcount))
 			if convertedGyms == []:
-				if not logActionsOnly:
-					log("[Conversion] Script executed - no stop was changed to a gym({})".format(len(convertedGyms)))
+				if ConvertPokestopsLogging:
+					if not logActionsOnly:
+						log("[Conversion] Script executed - no stop was changed to a gym({})".format(len(convertedGyms)))
 				print("[Conversion] Convertion script was executed, but no stop was changed to a gym")
 				cursor.close
 			else:
@@ -219,7 +227,8 @@ try:
 				updated = cursor.rowcount
 				cursor.execute(sql_delete)
 				conn.commit()
-				log("[Cooldown] {updated} stopname(s) converted to gym and {deleted} stop(s) got deleted".format(updated=updated,deleted=cursor.rowcount))
+				if ConvertPokestopsLogging:
+					log("[Cooldown] {updated} stopname(s) converted to gym and {deleted} stop(s) got deleted".format(updated=updated,deleted=cursor.rowcount))
 				print("[Conversion] {updated} stopname(s) converted to gym and {deleted} stop(s) got deleted".format(updated=updated,deleted=cursor.rowcount))
 
 		#Execute Spin Reset Script
@@ -236,8 +245,9 @@ try:
 			cursor.execute(sql, input)
 			cooldownedAccounts = cursor.fetchall()
 			if cooldownedAccounts == []:
-				if not logActionsOnly:
-					log("[SpinReset] Script executed - no accounts on cooldown({})".format(len(cooldownedAccounts)))
+				if SpinResetLogging:
+					if not logActionsOnly:
+						log("[SpinReset] Script executed - no accounts on cooldown({})".format(len(cooldownedAccounts)))
 				print("[SpinReset] SpinReset script was executed, but no account with spins was found for levelrange: {min}-{max}".format(min=resetMinlevel,max=resetMaxlevel))
 				cursor.close
 			else:
@@ -245,7 +255,8 @@ try:
 				cursor = conn.cursor()
 				cursor.execute(sql_update, input)
 				conn.commit()
-				log("[SpinReset] {} Account(s) were changed to 0 spins".format(cursor.rowcount))
+				if SpinResetLogging:
+					log("[SpinReset] {} Account(s) were changed to 0 spins".format(cursor.rowcount))
 				print(" ")
 				print("[SpinReset] {} Account(s) were changed to 0 spins".format(cursor.rowcount))
 				
@@ -258,22 +269,24 @@ try:
 				print ('[WarningReset][DEBUG] Executing with levelrange: {min} to {max}'.format(min=resetMinlevel,max=resetMaxlevel))
 			input = (resetMinlevel, resetMaxlevel)
 			cursor = conn.cursor()
-			sql = """SELECT username FROM account WHERE first_warning_timestamp IS NOT NULL AND level >=%s AND level <= %s"""
+			sql = """SELECT username FROM account WHERE (first_warning_timestamp IS NOT NULL OR failed IS NULL OR failed_timestamp IS NOT NULL) AND level >=%s AND level <= %s"""
 			cursor.execute(sql, input)
 			cooldownedAccounts = cursor.fetchall()
 			if cooldownedAccounts == []:
-				if not logActionsOnly:
-					log("[WarningReset] Script executed - no accounts with warnings({})".format(len(cooldownedAccounts)))
+				if WarningsResetLogging:
+					if not logActionsOnly:
+						log("[WarningReset] Script executed - no accounts with warnings or failed({})".format(len(cooldownedAccounts)))
 				print("[WarningReset] WarningReset script was executed, but no account with warnings was found for levelrange: {min}-{max}".format(min=resetMinlevel,max=resetMaxlevel))
 				cursor.close
 			else:
-				sql_update = """UPDATE account set first_warning_timestamp=null WHERE level >=%s AND level <= %s"""
+				sql_update = """UPDATE account set first_warning_timestamp=null, failed = null, failed_timestamp = null WHERE level >=%s AND level <= %s"""
 				cursor = conn.cursor()
 				cursor.execute(sql_update, input)
 				conn.commit()
-				log("[WarningReset] {} Account(s) cleared warnings".format(cursor.rowcount))
+				if WarningsResetLogging:
+					log("[WarningReset] {} Account(s) cleared warnings/failed".format(cursor.rowcount))
 				print(" ")
-				print("[WarningReset] {} Account(s) cleared warnings".format(cursor.rowcount))
+				print("[WarningReset] {} Account(s) cleared warnings/failed".format(cursor.rowcount))
 
 		#Execute CleanPokemon Script
 		if executeCleanPokemon:
@@ -301,12 +314,14 @@ try:
 			if debugLogging:
 				print('[Pokemon][DEBUG] Done. Chunks(1000) cleared: {}'.format(chunks))
 			if cleanedCount <= 0:
-				if not logActionsOnly:
-					log("[PokemonClean] Script executed - Pokemon table already clean({})".format(cleanedCount))
+				if CleanPokemonLogging:
+					if not logActionsOnly:
+						log("[PokemonClean] Script executed - Pokemon table already clean({})".format(cleanedCount))
 				print("[PokemonClean] Pokemon table is already clean")
 			else:
+				if CleanPokemonLogging:
+					log("[PokemonClean] {} Pokemon were cleaned from the database".format(cleanedCount))
 				print("[PokemonClean] {} Pokemon were cleaned from the database".format(cleanedCount))
-				log("[PokemonClean] {} Pokemon were cleaned from the database".format(cleanedCount))
 
 	else:
 		if not logActionsOnly:
