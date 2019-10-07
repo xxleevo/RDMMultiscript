@@ -116,7 +116,7 @@ try:
 	if debugLogging:
 		print('[DEBUG] Reset Spins: {}'.format(WarningReset))
 	if verboseLogging:
-		print('[VERBOSE] Reset Spins at the following hours: {}'.format(WarningResetHours))
+		print('[VERBOSE] Reset Spins at the following hours: {}'.format(WarningsResetHours))
 		print('[VERBOSE] Reset Spins at the following minutes: {}'.format(WarningResetMinutes))
 		print('[VERBOSE] Reset Spins for the following levels: {}'.format(WarningResetLevelrange))
 		print('')
