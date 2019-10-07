@@ -117,8 +117,8 @@ try:
 		print('[DEBUG] Reset Spins: {}'.format(WarningReset))
 	if verboseLogging:
 		print('[VERBOSE] Reset Spins at the following hours: {}'.format(WarningsResetHours))
-		print('[VERBOSE] Reset Spins at the following minutes: {}'.format(WarningResetMinutes))
-		print('[VERBOSE] Reset Spins for the following levels: {}'.format(WarningResetLevelrange))
+		print('[VERBOSE] Reset Spins at the following minutes: {}'.format(WarningsResetMinutes))
+		print('[VERBOSE] Reset Spins for the following levels: {}'.format(WarningsResetLevelrange))
 		print('')
 	
 	#Declare every script execute set to false
