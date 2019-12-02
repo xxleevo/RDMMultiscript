@@ -42,6 +42,8 @@ ResetCooldownAccounts = config.getboolean('Account Cooldown','ResetCooldownAccou
 ResetCooldownAccountsHours = json.loads(config.get('Account Cooldown','ResetCooldownAccountsHours'))
 ResetCooldownAccountsMinutes = json.loads(config.get('Account Cooldown','ResetCooldownAccountsMinutes'))
 ResetCooldownAccountsLevelrange = json.loads(config.get('Account Cooldown','ResetCooldownAccountsLevelrange'))
+ResetCooldownAccountsByCooldownedTime = config.getboolean('Account Cooldown','ResetCooldownAccountsByCooldownedTime')
+ResetCooldownAccountsMinimumCooldowned = config.getint('Account Cooldown','ResetCooldownAccountsMinimumCooldowned')
 ResetCooldownAccountsLogging = config.getboolean('Account Cooldown','ResetCooldownAccountsLogging')
 
 #Spin Reset Settings
@@ -181,10 +183,18 @@ try:
 			resetMaxlevel = str(ResetCooldownAccountsLevelrange[1])
 			if debugLogging:
 				print ('[Cooldown][DEBUG] Executing with levelrange: {min} to {max}'.format(min=resetMinlevel,max=resetMaxlevel))
-			input = (resetMinlevel, resetMaxlevel)
+				print ('[DEBUG] Only Reset Cooldowns by time: {}'.format(ResetCooldownAccountsByCooldownedTime))
+				if ResetCooldownAccountsByCooldownedTime:
+					print ('[DEBUG] Min Cooldown-Time: {}'.format(ResetCooldownAccountsMinimumCooldowned))
+			if ResetCooldownAccountsByCooldownedTime:
+				input = (resetMinlevel, resetMaxlevel, ResetCooldownAccountsMinimumCooldowned)
+				sql = """SELECT username FROM account WHERE last_encounter_time IS NOT NULL AND level >=%s AND level <= %s  AND last_encounter_time <= UNIX_TIMESTAMP(NOW() - INTERVAL %s MINUTE)"""
+			else:
+				input = (resetMinlevel, resetMaxlevel)
+				sql = """SELECT username FROM account WHERE last_encounter_time IS NOT NULL AND level >=%s AND level <= %s"""
 			cursor = conn.cursor()
-			sql = """SELECT username FROM account WHERE last_encounter_time IS NOT NULL AND level >=%s AND level <= %s"""
 			cursor.execute(sql, input)
+			
 			cooldownedAccounts = cursor.fetchall()
 			if cooldownedAccounts == []:
 				if ResetCooldownAccountsLogging:
@@ -193,7 +203,12 @@ try:
 				print("[Cooldown] Cooldown script was executed, but no account in cooldown was found for levelrange: {min}-{max}".format(min=resetMinlevel,max=resetMaxlevel))
 				cursor.close
 			else:
-				sql_update = """UPDATE account set last_encounter_time=NULL, last_encounter_lat=NULL, last_encounter_lon=NULL WHERE level >=%s AND level <= %s"""
+				if ResetCooldownAccountsByCooldownedTime:
+					sql_update = """UPDATE account set last_encounter_time=NULL, last_encounter_lat=NULL, last_encounter_lon=NULL WHERE level >=%s AND level <= %s AND last_encounter_time <= UNIX_TIMESTAMP(NOW() - INTERVAL %s MINUTE)"""
+				else:
+					sql_update = """UPDATE account set last_encounter_time=NULL, last_encounter_lat=NULL, last_encounter_lon=NULL WHERE level >=%s AND level <= %s"""
+				if debugLogging:
+					print ('[DEBUG] SQL Query for Cooldown Accs: {}'.format(ResetCooldownAccountsMinimumCooldowned))
 				cursor = conn.cursor()
 				cursor.execute(sql_update, input)
 				conn.commit()
