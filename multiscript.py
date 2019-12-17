@@ -36,8 +36,6 @@ ConvertPokestops = config.getboolean('Pokestop','ConvertStops')
 ConvertStopsHours = json.loads(config.get('Pokestop','ConvertStopsHours'))
 ConvertStopsMinutes = json.loads(config.get('Pokestop','ConvertStopsMinutes'))
 ConvertPokestopsLogging = config.getboolean('Pokestop','ConvertStopsLogging')
-
-#Account Cooldown-Reset Settings
 ResetCooldownAccounts = config.getboolean('Account Cooldown','ResetCooldownAccounts')
 ResetCooldownAccountsHours = json.loads(config.get('Account Cooldown','ResetCooldownAccountsHours'))
 ResetCooldownAccountsMinutes = json.loads(config.get('Account Cooldown','ResetCooldownAccountsMinutes'))
@@ -58,6 +56,10 @@ WarningReset = config.getboolean('Warning Reset','ResetWarnings')
 WarningsResetHours = json.loads(config.get('Warning Reset','ResetWarningsHours'))
 WarningsResetMinutes = json.loads(config.get('Warning Reset','ResetWarningsMinutes'))
 WarningsResetLevelrange = json.loads(config.get('Warning Reset','ResetWarningsLevelrange'))
+
+WarningsResetOnlyWarnings = config.getboolean('Warning Reset','ResetWarningsOnly')
+WarningsResetOnlyWarningsByPassedDays = config.getboolean('Warning Reset','ResetWarningsOnlyByPassedDays')
+WarningsResetOnlyWarningsPassedDays = config.getint('Warning Reset','ResetWarningsOnlyByPassedDaysAmount')
 WarningsResetLogging = config.getboolean('Warning Reset','ResetWarningsLogging')
 
 #Logging
@@ -116,11 +118,11 @@ try:
 		
 	#Spin Reset
 	if debugLogging:
-		print('[DEBUG] Reset Spins: {}'.format(WarningReset))
+		print('[DEBUG] Reset Warnings: {}'.format(WarningReset))
 	if verboseLogging:
-		print('[VERBOSE] Reset Spins at the following hours: {}'.format(WarningsResetHours))
-		print('[VERBOSE] Reset Spins at the following minutes: {}'.format(WarningsResetMinutes))
-		print('[VERBOSE] Reset Spins for the following levels: {}'.format(WarningsResetLevelrange))
+		print('[VERBOSE] Reset Warnings at the following hours: {}'.format(WarningsResetHours))
+		print('[VERBOSE] Reset Warnings at the following minutes: {}'.format(WarningsResetMinutes))
+		print('[VERBOSE] Reset Warnings for the following levels: {}'.format(WarningsResetLevelrange))
 		print('')
 	
 	#Declare every script execute set to false
@@ -277,31 +279,47 @@ try:
 				
 		if executeWarningReset:
 			print('')
-			print('[WarningReset] Executing spin-reset script...')
+			print('[WarningReset] Executing warning-reset script...')
 			resetMinlevel = str(WarningsResetLevelrange[0])
 			resetMaxlevel = str(WarningsResetLevelrange[1])
 			if debugLogging:
 				print ('[WarningReset][DEBUG] Executing with levelrange: {min} to {max}'.format(min=resetMinlevel,max=resetMaxlevel))
-			input = (resetMinlevel, resetMaxlevel)
+				if WarningsResetOnlyWarningsByPassedDays:
+					print ('[WarningReset][DEBUG] Only resetting Accounts with warnings older than day: {}'.format(WarningsResetOnlyWarningsPassedDays))
+				elif WarningsResetOnlyWarnings:
+					print ('[WarningReset][DEBUG] Only Hard Reset Warnings Mode')
+			if WarningsResetOnlyWarningsByPassedDays:
+				input = (WarningsResetOnlyWarningsPassedDays, resetMinlevel, resetMaxlevel)
+				sql = """SELECT username FROM account WHERE (first_warning_timestamp < UNIX_TIMESTAMP(NOW() - INTERVAL %s DAY)) AND level >=%s AND level <= %s"""
+			elif WarningsResetOnlyWarnings:
+				input = (resetMinlevel, resetMaxlevel)
+				sql = """SELECT username FROM account WHERE (first_warning_timestamp IS NOT NULL) AND level >=%s AND level <= %s"""
+			else:
+				input = (resetMinlevel, resetMaxlevel)
+				sql = """SELECT username FROM account WHERE (first_warning_timestamp IS NOT NULL OR failed IS NULL OR failed_timestamp IS NOT NULL) AND level >=%s AND level <= %s"""
 			cursor = conn.cursor()
-			sql = """SELECT username FROM account WHERE (first_warning_timestamp IS NOT NULL OR failed IS NULL OR failed_timestamp IS NOT NULL) AND level >=%s AND level <= %s"""
 			cursor.execute(sql, input)
 			cooldownedAccounts = cursor.fetchall()
 			if cooldownedAccounts == []:
 				if WarningsResetLogging:
 					if not logActionsOnly:
-						log("[WarningReset] Script executed - no accounts with warnings or failed({})".format(len(cooldownedAccounts)))
+						log("[WarningReset] Script executed - no accounts with warnings (or failed)({})".format(len(cooldownedAccounts)))
 				print("[WarningReset] WarningReset script was executed, but no account with warnings was found for levelrange: {min}-{max}".format(min=resetMinlevel,max=resetMaxlevel))
 				cursor.close
 			else:
-				sql_update = """UPDATE account set first_warning_timestamp=null, failed = null, failed_timestamp = null WHERE level >=%s AND level <= %s"""
+				if WarningsResetOnlyWarningsByPassedDays:
+					sql_update = """UPDATE account set first_warning_timestamp=null WHERE first_warning_timestamp < UNIX_TIMESTAMP(NOW() - INTERVAL %s DAY) AND level >=%s AND level <= %s"""
+				elif WarningsResetOnlyWarnings:
+					sql_update = """UPDATE account set first_warning_timestamp=null WHERE level >=%s AND level <= %s"""
+				else:
+					sql_update = """UPDATE account set first_warning_timestamp=null, failed = null, failed_timestamp = null WHERE level >=%s AND level <= %s"""
 				cursor = conn.cursor()
 				cursor.execute(sql_update, input)
 				conn.commit()
 				if WarningsResetLogging:
-					log("[WarningReset] {} Account(s) cleared warnings/failed".format(cursor.rowcount))
+					log("[WarningReset] {} Account(s) cleared warnings/(failed)".format(cursor.rowcount))
 				print(" ")
-				print("[WarningReset] {} Account(s) cleared warnings/failed".format(cursor.rowcount))
+				print("[WarningReset] {} Account(s) cleared warnings/(failed)".format(cursor.rowcount))
 
 		#Execute CleanPokemon Script
 		if executeCleanPokemon:
