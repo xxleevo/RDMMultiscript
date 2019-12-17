@@ -36,6 +36,8 @@ ConvertPokestops = config.getboolean('Pokestop','ConvertStops')
 ConvertStopsHours = json.loads(config.get('Pokestop','ConvertStopsHours'))
 ConvertStopsMinutes = json.loads(config.get('Pokestop','ConvertStopsMinutes'))
 ConvertPokestopsLogging = config.getboolean('Pokestop','ConvertStopsLogging')
+
+#Account Cooldown-Reset Settings
 ResetCooldownAccounts = config.getboolean('Account Cooldown','ResetCooldownAccounts')
 ResetCooldownAccountsHours = json.loads(config.get('Account Cooldown','ResetCooldownAccountsHours'))
 ResetCooldownAccountsMinutes = json.loads(config.get('Account Cooldown','ResetCooldownAccountsMinutes'))
