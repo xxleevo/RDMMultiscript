@@ -195,7 +195,7 @@ try:
 						executeWarningReset = True
 
 	#When Config says to execute something, do that
-	if ConvertPokestops or ResetCooldownAccounts or CleanPokemon or SpinReset or WarningReset:
+	if ConvertPokestops or ResetCooldownAccounts or CleanPokemon or TruncatePokemon or SpinReset or WarningReset:
 		conn = mysql.connector.connect(host=Host,
                              database=Name,
                              user=User,
