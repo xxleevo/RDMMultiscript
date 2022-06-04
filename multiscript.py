@@ -103,8 +103,8 @@ try:
 		print('')
 		print('[DEBUG] Truncate Pokemon: {}'.format(TruncatePokemon))
 	if verboseLogging:
-		print('[VERBOSE] Truncate Pokemon at the following hours: {}'.format(CleanPokemonHours))
-		print('[VERBOSE] Truncate Pokemon at the following minutes: {}'.format(CleanPokemonMinutes))
+		print('[VERBOSE] Truncate Pokemon at the following hours: {}'.format(TruncatePokemonHours))
+		print('[VERBOSE] Truncate Pokemon at the following minutes: {}'.format(TruncatePokemonMinutes))
 		print('')
 		
 	#Pokestop Logging
