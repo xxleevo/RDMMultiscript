@@ -25,11 +25,17 @@ User = config.get('DB','User')
 Pwd = config.get('DB','Password')
 Port = config.get('DB','Port')
 
-#Pokestop Config Settings
+#Clean Config Settings
 CleanPokemon = config.getboolean('Pokemon','CleanPokemon')
 CleanPokemonHours = json.loads(config.get('Pokemon','CleanPokemonHours'))
 CleanPokemonMinutes = json.loads(config.get('Pokemon','CleanPokemonMinutes'))
 CleanPokemonLogging = config.getboolean('Pokemon','CleanPokemonLogging')
+
+#Clean Truncate Config Settings
+TruncatePokemon = config.getboolean('Pokemon','TruncatePokemon')
+TruncatePokemonHours = json.loads(config.get('Pokemon','TruncatePokemonHours'))
+TruncatePokemonMinutes = json.loads(config.get('Pokemon','TruncatePokemonMinutes'))
+TruncatePokemonLogging = config.getboolean('Pokemon','TruncatePokemonLogging')
 
 #Pokestop Config Settings
 ConvertPokestops = config.getboolean('Pokestop','ConvertStops')
@@ -92,6 +98,15 @@ try:
 		print('[VERBOSE] Clean Pokemon at the following minutes: {}'.format(CleanPokemonMinutes))
 		print('')
 		
+	#Pokemon Logging
+	if debugLogging:
+		print('')
+		print('[DEBUG] Truncate Pokemon: {}'.format(TruncatePokemon))
+	if verboseLogging:
+		print('[VERBOSE] Truncate Pokemon at the following hours: {}'.format(CleanPokemonHours))
+		print('[VERBOSE] Truncate Pokemon at the following minutes: {}'.format(CleanPokemonMinutes))
+		print('')
+		
 	#Pokestop Logging
 	if debugLogging:
 		print('[DEBUG] Convert Pokestops: {}'.format(ConvertPokestops))
@@ -129,6 +144,7 @@ try:
 	
 	#Declare every script execute set to false
 	executeCleanPokemon = False
+	executeTruncatePokemon = False
 	executeConvert = False
 	executeCooldown = False
 	executeSpinReset = False
@@ -141,6 +157,13 @@ try:
 				for j in CleanPokemonMinutes:
 					if j == now.minute:
 						executeCleanPokemon = True
+	#Handling Pokemon Cleaning to execute
+	if TruncatePokemon:
+		for i in TruncatePokemonHours:
+			if i == now.hour:
+				for j in TruncatePokemonMinutes:
+					if j == now.minute:
+						executeTruncatePokemon = True
 	#Handling Cooldown Reset to execute
 	if ResetCooldownAccounts:
 		for i in ResetCooldownAccountsHours:
@@ -357,12 +380,33 @@ try:
 				if CleanPokemonLogging:
 					log("[PokemonClean] {} Pokemon were cleaned from the database".format(cleanedCount))
 				print("[PokemonClean] {} Pokemon were cleaned from the database".format(cleanedCount))
-
+                
+		#Execute TruncatePokemon Script
+		if executeTruncatePokemon:
+			truncated = 0
+			print('')
+			print('[PokemonTruncate] Executing pokemon truncate script...')
+			cursor = conn.cursor()
+			tstamp = time.time()
+			if debugLogging:
+				print('[PokemonTruncate][DEBUG] timestamp used to truncate Pokemon: {}'.format(tstamp))
+			sql = """TRUNCATE TABLE pokemon"""
+			cursor.execute(sql)
+			truncated = 1
+			conn.commit()
+			if debugLogging:
+				print("[PokemonTruncate] Pokemontable truncated.")
+			if TruncatePokemonLogging:
+				log("[PokemonTruncate] Pokemontable truncated.")
+				print("[PokemonTruncate] Pokemontable truncated.")
 	else:
 		if not logActionsOnly:
 			log("[Script] Multiscript was started, but no configs were enabled".format(len(convertedGyms)))
 		if debugLogging:
 			print("[DEBUG] Script was executed, but no configs were enabled")
+            
+
+
 except Error as e :
 	print ("Error", e)
 	print(" ")
